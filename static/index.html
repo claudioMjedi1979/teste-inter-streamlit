@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spot Instance Advisor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Filtrar Instâncias Spot</h1>
+        </header>
+
+        <section class="filters">
+            <h2>Filtrar Instâncias Spot</h2>
+            <div class="filter-group">
+                <label for="region">Região:</label>
+                <select id="region">
+                    <option value="">Selecione a Região</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="cpu">CPU:</label>
+                <input type="number" id="cpu" placeholder="Ex: 4">
+            </div>
+            <div class="filter-group">
+                <label for="memory">Memória (GiB):</label>
+                <input type="number" id="memory" placeholder="Ex: 16">
+            </div>
+            <div class="filter-group">
+                <label for="instanceType">Tipo de Instância:</label>
+                <select id="instanceType">
+                    <option value="">Selecione o Tipo de Instância</option>
+                </select>
+            </div>
+            <button onclick="filterSpotInstances()">Filtrar Instâncias</button>
+            <button onclick="fetchSpotInstances()">Ver Todas as Instâncias</button>
+        </section>
+
+        <section class="results">
+            <h2>Resultado</h2>
+            <table id="spotInstancesTable" border="1"></table>
+        </section>
+    </div>
+
+    <script>
+        // Função para buscar os dados de instâncias Spot e preencher os campos de Região e Tipos de Instância
+        async function fetchSpotData() {
+            const response = await fetch('/spot_instances');
+            const data = await response.json();
+
+            // Verifique a estrutura dos dados retornados
+            console.log("Dados da API:", data);
+
+            const instanceData = data.instance_types;
+
+            // Preencher o dropdown de Regiões
+            const regionSelect = document.getElementById("region");
+            const regions = [...new Set(Object.values(instanceData).map(item => item.region))];  // Pega valores únicos das regiões
+            regions.forEach(region => {
+                let option = document.createElement("option");
+                option.value = region;
+                option.text = region;
+                regionSelect.appendChild(option);
+            });
+
+            // Preencher o dropdown de Tipos de Instância
+            const instanceTypeSelect = document.getElementById("instanceType");
+            const instanceTypes = Object.keys(instanceData);
+            instanceTypes.forEach(instanceType => {
+                let option = document.createElement("option");
+                option.value = instanceType;
+                option.text = instanceType;
+                instanceTypeSelect.appendChild(option);
+            });
+        }
+
+        // Função para exibir todas as instâncias Spot na tabela
+        async function fetchSpotInstances() {
+            const response = await fetch('/spot_instances');
+            const data = await response.json();
+
+            const instanceData = data.instance_types;
+
+            let table = document.getElementById("spotInstancesTable");
+            table.innerHTML = ""; // Limpa a tabela
+
+            // Cabeçalhos da tabela
+            let header = table.createTHead();
+            let headerRow = header.insertRow(0);
+            let headers = ['InstanceType', 'vCPU', 'MemoryGiB', 'SavingsOverOnDemand', 'InterruptionFrequency'];
+
+            headers.forEach((headerText, index) => {
+                let cell = headerRow.insertCell(index);
+                cell.innerHTML = headerText;
+            });
+
+            // Adiciona os dados à tabela
+            Object.keys(instanceData).forEach((instanceType) => {
+                const item = instanceData[instanceType];
+                let row = table.insertRow();
+                headers.forEach((headerText, index) => {
+                    let cell = row.insertCell(index);
+                    if (headerText === 'InstanceType') {
+                        cell.innerHTML = instanceType;
+                    } else {
+                        cell.innerHTML = item[headerText] || "undefined";  // Verifica se o dado existe, caso contrário, retorna "undefined"
+                    }
+                });
+            });
+        }
+
+        // Função para filtrar instâncias com base nos parâmetros fornecidos
+        async function filterSpotInstances() {
+            let region = document.getElementById("region").value;
+            let cpu = document.getElementById("cpu").value;
+            let memory = document.getElementById("memory").value;
+            let instanceType = document.getElementById("instanceType").value;
+
+            const url = `/spot_instances/filter?region=${region}&cpu=${cpu}&memory=${memory}&instance_type=${instanceType}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            let table = document.getElementById("spotInstancesTable");
+            table.innerHTML = ""; // Limpa a tabela
+
+            const instanceData = data.instance_types;
+
+            // Cabeçalhos da tabela
+            let header = table.createTHead();
+            let headerRow = header.insertRow(0);
+            let headers = ['InstanceType', 'vCPU', 'MemoryGiB', 'SavingsOverOnDemand', 'InterruptionFrequency'];
+
+            headers.forEach((headerText, index) => {
+                let cell = headerRow.insertCell(index);
+                cell.innerHTML = headerText;
+            });
+
+            // Adiciona os dados filtrados à tabela
+            Object.keys(instanceData).forEach((instanceType) => {
+                const item = instanceData[instanceType];
+                let row = table.insertRow();
+                headers.forEach((headerText, index) => {
+                    let cell = row.insertCell(index);
+                    if (headerText === 'InstanceType') {
+                        cell.innerHTML = instanceType;
+                    } else {
+                        cell.innerHTML = item[headerText] || "undefined";  // Verifica se o dado existe, caso contrário, retorna "undefined"
+                    }
+                });
+            });
+        }
+
+        // Carregar os dados de Região e Tipo de Instância ao carregar a página
+        window.onload = fetchSpotData;
+    </script>
+</body>
+</html>
